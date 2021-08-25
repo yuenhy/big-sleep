@@ -306,7 +306,7 @@ class Imagine(nn.Module):
         iterations = 1050,
         save_progress = False,
         bilinear = False,
-        open_folder = True,
+        open_folder = False,
         seed = None,
         append_seed = False,
         torch_deterministic = False,
@@ -314,6 +314,7 @@ class Imagine(nn.Module):
         class_temperature = 2.,
         save_date_time = False,
         save_best = False,
+        save_dir = "./",
         experimental_resample = False,
         ema_decay = 0.99,
         num_cutouts = 128,
@@ -324,6 +325,10 @@ class Imagine(nn.Module):
         if torch_deterministic:
             assert not bilinear, 'the deterministic (seeded) operation does not work with interpolation (PyTorch 1.7.1)'
             torch.set_deterministic(True)
+
+        self.save_dir = save_dir
+        self.img_dir = Path(save_dir).joinpath("images")
+        self.img_dir.mkdir(exist_ok=True, parents=True)
 
         self.seed = seed
         self.append_seed = append_seed
@@ -432,7 +437,7 @@ class Imagine(nn.Module):
             text_path = datetime.now().strftime("%y%m%d-%H%M%S-") + text_path
 
         self.text_path = text_path
-        self.filename = Path(f'./{text_path}{self.seed_suffix}.png')
+        self.filename = self.img_dir.joinpath(f'./{text_path}{self.seed_suffix}.png')
         self.encode_max_and_min(text, img=img, encoding=encoding, text_min=text_min) # Tokenize and encode each prompt
 
     def reset(self):
@@ -470,11 +475,11 @@ class Imagine(nn.Module):
                 if self.save_progress:
                     total_iterations = epoch * self.iterations + i
                     num = total_iterations // self.save_every
-                    save_image(image, Path(f'./{self.text_path}.{num}{self.seed_suffix}.png'))
+                    save_image(image, self.img_dir.joinpath(f'./{self.text_path}.{num}{self.seed_suffix}.png'))
 
                 if self.save_best and top_score.item() < self.current_best_score:
                     self.current_best_score = top_score.item()
-                    save_image(image, Path(f'./{self.text_path}{self.seed_suffix}.best.png'))
+                    save_image(image, self.img_dir.joinpath(f'./{self.text_path}{self.seed_suffix}.best.png'))
 
         return out, total_loss
 
@@ -488,7 +493,7 @@ class Imagine(nn.Module):
             self.model(self.encoded_texts["max"][0]) # one warmup step due to issue with CLIP and CUDA
 
         if self.open_folder:
-            open_folder('./')
+            open_folder(self.save_dir)
             self.open_folder = False
 
         image_pbar = tqdm(total=self.total_image_updates, desc='image update', position=2, leave=True)

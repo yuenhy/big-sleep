@@ -1,51 +1,3 @@
-<img src="./samples/artificial_intelligence.png" width="250px"></img>
-
-*artificial intelligence*
-
-<img src="./samples/cosmic_love_and_attention.png" width="250px"></img>
-
-*cosmic love and attention*
-
-<img src="./samples/fire_in_the_sky.png" width="250px"></img>
-
-*fire in the sky*
-
-<img src="./samples/a_pyramid_made_of_ice.png" width="250px"></img>
-
-*a pyramid made of ice*
-
-<img src="./samples/a_lonely_house_in_the_woods.png" width="250px"></img>
-
-*a lonely house in the woods*
-
-<img src="./samples/marriage_in_the_mountains.png" width="250px"></img>
-
-*marriage in the mountains*
-
-<img src="./samples/a_lantern_dangling_from_the_tree_in_a_foggy_graveyard.png" width="250px"></img>
-
-*lantern dangling from a tree in a foggy graveyard*
-
-<img src="./samples/a_vivid_dream.png" width="250px"></img>
-
-*a vivid dream*
-
-<img src="./samples/balloons_over_the_ruins_of_a_city.png" width="250px"></img>
-
-*balloons over the ruins of a city*
-
-<img src="./samples/the_death_of_the_lonesome_astronomer.png" width="250px"></img>
-
-*the death of the lonesome astronomer* - by <a href="https://github.com/moirage">moirage</a>
-
-<img src="./samples/the_tragic_intimacy_of_the_eternal_conversation_with_oneself.png" width="250px"></img>
-
-*the tragic intimacy of the eternal conversation with oneself* - by <a href="https://github.com/moirage">moirage</a>
-
-<img src="./samples/demon_fire.png" width="250px"></img>
-
-*demon fire* - by <a href="https://github.com/WiseNat">WiseNat</a>
-
 ## Big Sleep
 
 <a href="https://twitter.com/advadnoun">Ryan Murdock</a> has done it again, combining OpenAI's <a href="https://github.com/openai/CLIP">CLIP</a> and the generator from a <a href="https://arxiv.org/abs/1809.11096">BigGAN</a>! This repository wraps up his work so it is easily accessible to anyone who owns a GPU.
@@ -72,7 +24,13 @@ $ pip install big-sleep
 $ dream "a pyramid made of ice"
 ```
 
-Images will be saved to wherever the command is invoked
+Images will be saved under `images` wherever the command is invoked.
+
+You can change the parent directory with
+
+```bash
+$ dream "the edge of human" --save_dir secret_experiment
+```
 
 ## Advanced
 
@@ -139,6 +97,7 @@ dream.set_text("a quiet pond underneath the midnight moon")
 
 And reset the latents with `.reset()`
 
+
 ```python
 dream.reset()
 ```
@@ -162,6 +121,24 @@ You can set the number of classes that you wish to restrict Big Sleep to use for
 ```bash
 $ dream 'a single flower in a withered field' --max-classes 15
 ```
+### Saving and Restoring Latents
+Saves `inital`izing latent or as per `save_every`. Defaults to False
+
+```bash
+$ dream 'androids dreaming of electric sleep' --save_latents initial|True
+```
+
+Latents will be saved under `latents` wherever the command is invoked.
+
+You can specify the parent directory with `--save_dir`.
+
+Restores latents and resets optimizer.
+
+```bash
+$ dream 'a latent space' --latents_filename previous.backup
+```
+Looks for `previous.backup` in `latents` wherever the command is invoked.
+You can specify the parent directory with `--save_dir`.
 
 ## Alternatives
 

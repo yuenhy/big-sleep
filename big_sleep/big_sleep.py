@@ -2,8 +2,7 @@ import os
 import sys
 import subprocess
 import signal
-import string
-import re
+import dill
 
 from datetime import datetime
 from pathlib import Path
@@ -168,7 +167,9 @@ class Model(nn.Module):
         image_size,
         max_classes = None,
         class_temperature = 2.,
-        ema_decay = 0.99
+        ema_decay = 0.99,
+        latents_dir = None,
+        latents_filename = None
     ):
         super().__init__()
         assert image_size in (128, 256, 512), 'image size must be one of 128, 256, or 512'
@@ -177,8 +178,12 @@ class Model(nn.Module):
         self.class_temperature = class_temperature
         self.ema_decay\
             = ema_decay
-
-        self.init_latents()
+        if latents_filename is None:
+            self.init_latents()
+        else:
+            latents_filepath = latents_dir.joinpath(latents_filename)
+            old_state_backup = dill.load(open(latents_filepath, "rb"))
+            self.latents = old_state_backup.ema_backup
 
     def init_latents(self):
         latents = Latents(
@@ -208,6 +213,8 @@ class BigSleep(nn.Module):
         experimental_resample = False,
         ema_decay = 0.99,
         center_bias = False,
+        latents_dir = None,
+        latents_filename = None
     ):
         super().__init__()
         self.loss_coef = loss_coef
@@ -222,7 +229,9 @@ class BigSleep(nn.Module):
             image_size = image_size,
             max_classes = max_classes,
             class_temperature = class_temperature,
-            ema_decay = ema_decay
+            ema_decay = ema_decay,
+            latents_dir = latents_dir,
+            latents_filename = latents_filename
         )
 
     def reset(self):
@@ -289,6 +298,10 @@ class BigSleep(nn.Module):
         sim_loss = sum(results).mean()
         return out, (lat_loss, cls_loss, sim_loss)
 
+class CurrentStateBackup:
+    def __init__(self, ema, optimizer):
+        self.ema_backup = ema
+        self.optimizer_backup = optimizer
 
 class Imagine(nn.Module):
     def __init__(
@@ -319,6 +332,9 @@ class Imagine(nn.Module):
         ema_decay = 0.99,
         num_cutouts = 128,
         center_bias = False,
+        save_latents = False,
+        latents_filename = None,
+        reset_optimizer = True
     ):
         super().__init__()
 
@@ -329,6 +345,12 @@ class Imagine(nn.Module):
         self.save_dir = save_dir
         self.img_dir = Path(save_dir).joinpath("images")
         self.img_dir.mkdir(exist_ok=True, parents=True)
+
+        self.save_latents = save_latents
+        self.latents_dir = Path(save_dir).joinpath("latents")
+        self.latents_dir.mkdir(exist_ok=True, parents=True)
+        self.latents_filename = latents_filename
+        self.latents_filepath = None
 
         self.seed = seed
         self.append_seed = append_seed
@@ -351,12 +373,19 @@ class Imagine(nn.Module):
             ema_decay = ema_decay,
             num_cutouts = num_cutouts,
             center_bias = center_bias,
+            latents_dir = self.latents_dir,
+            latents_filename = latents_filename
         ).cuda()
 
         self.model = model
 
         self.lr = lr
-        self.optimizer = Adam(model.model.latents.model.parameters(), lr)
+        if latents_filename is None or reset_optimizer:
+            self.optimizer = Adam(model.model.latents.model.parameters(), lr)
+        else:
+            old_state_backup = dill.load(open(self.latents_dir.joinpath(latents_filename), "rb"))
+            self.optimizer = old_state_backup.optimizer_backup
+
         self.gradient_accumulate_every = gradient_accumulate_every
         self.save_every = save_every
 
@@ -382,7 +411,8 @@ class Imagine(nn.Module):
         return f'.{self.seed}' if self.append_seed and exists(self.seed) else ''
 
     def set_text(self, text):
-        self.set_clip_encoding(text = text)
+        self.set_clip_encoding(text=text)
+
 
     def create_clip_encoding(self, text=None, img=None, encoding=None):
         self.text = text
@@ -412,7 +442,6 @@ class Imagine(nn.Module):
         with torch.no_grad():
             img_encoding = perceptor.encode_image(normed_img).detach()
         return img_encoding
-    
     
     def encode_multiple_phrases(self, text, img=None, encoding=None, text_type="max"):
         if text is not None and "|" in text:
@@ -467,6 +496,19 @@ class Imagine(nn.Module):
                 self.model.model.latents.train()
 
                 save_image(image, str(self.filename))
+
+                if self.save_latents:
+                    current_state_backup = CurrentStateBackup(self.model.mode.latents, self.optimizer)
+
+                    if self.latents_filename is None:
+                        self.latents_filepath = self.latents_dir.joinpath(f"{self.text_path}{self.seed_suffix}.backup")
+                    else:
+                        self.latents_filepath = self.latents_dir.joinpath(self.latents_filename)
+
+                    dill.dump(current_state_backup, file = open(self.latents_filepath, "wb"))
+                    if self.save_latents == "initial":
+                        self.save_latents = False
+                        
                 if pbar is not None:
                     pbar.update(1)
                 else:

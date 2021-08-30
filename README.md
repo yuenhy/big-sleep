@@ -135,7 +135,7 @@ You can specify the parent directory with `--save_dir`.
 Restores latents and resets optimizer.
 
 ```bash
-$ dream 'a latent space' --latents_filename previous.backup
+$ dream 'a latent space' --latents_filename latent.pkl
 ```
 Looks for `previous.backup` in `latents` wherever the command is invoked.
 You can specify the parent directory with `--save_dir`.

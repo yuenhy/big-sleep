@@ -182,8 +182,7 @@ class Model(nn.Module):
             self.init_latents()
         else:
             latents_filepath = latents_dir.joinpath(latents_filename)
-            old_state_backup = dill.load(open(latents_filepath, "rb"))
-            self.latents = old_state_backup.ema_backup
+            self.latents = dill.load(open(latents_filepath, "rb"))
 
     def init_latents(self):
         latents = Latents(
@@ -298,11 +297,6 @@ class BigSleep(nn.Module):
         sim_loss = sum(results).mean()
         return out, (lat_loss, cls_loss, sim_loss)
 
-class CurrentStateBackup:
-    def __init__(self, ema, optimizer):
-        self.ema_backup = ema
-        self.optimizer_backup = optimizer
-
 class Imagine(nn.Module):
     def __init__(
         self,
@@ -333,8 +327,7 @@ class Imagine(nn.Module):
         num_cutouts = 128,
         center_bias = False,
         save_latents = False,
-        latents_filename = None,
-        reset_optimizer = True
+        latents_filename = None
     ):
         super().__init__()
 
@@ -380,11 +373,7 @@ class Imagine(nn.Module):
         self.model = model
 
         self.lr = lr
-        if latents_filename is None or reset_optimizer:
-            self.optimizer = Adam(model.model.latents.model.parameters(), lr)
-        else:
-            old_state_backup = dill.load(open(self.latents_dir.joinpath(latents_filename), "rb"))
-            self.optimizer = old_state_backup.optimizer_backup
+        self.optimizer = Adam(model.model.latents.model.parameters(), lr)
 
         self.gradient_accumulate_every = gradient_accumulate_every
         self.save_every = save_every
@@ -498,14 +487,12 @@ class Imagine(nn.Module):
                 save_image(image, str(self.filename))
 
                 if self.save_latents:
-                    current_state_backup = CurrentStateBackup(self.model.mode.latents, self.optimizer)
-
                     if self.latents_filename is None:
                         self.latents_filepath = self.latents_dir.joinpath(f"{self.text_path}{self.seed_suffix}.backup")
                     else:
                         self.latents_filepath = self.latents_dir.joinpath(self.latents_filename)
 
-                    dill.dump(current_state_backup, file = open(self.latents_filepath, "wb"))
+                    dill.dump(self.model.mode.latents, file = open(self.latents_filepath, "wb"))
                     if self.save_latents == "initial":
                         self.save_latents = False
                         
@@ -538,14 +525,14 @@ class Imagine(nn.Module):
             open_folder(self.save_dir)
             self.open_folder = False
 
-        image_pbar = tqdm(total=self.total_image_updates, desc='image update', position=2, leave=True)
-        for epoch in trange(self.epochs, desc = '      epochs', position=0, leave=True):
-            pbar = trange(self.iterations, desc='   iteration', position=1, leave=True)
-            image_pbar.update(0)
-            for i in pbar:
-                out, loss = self.train_step(epoch, i, image_pbar)
-                pbar.set_description(f'loss: {loss.item():04.2f}')
+        # image_pbar = tqdm(total=self.total_image_updates, desc='image update', position=2, leave=True)
+        # for epoch in trange(self.epochs, desc = '      epochs', position=0, leave=True):
+        #     pbar = trange(self.iterations, desc='   iteration', position=1, leave=True)
+        #     image_pbar.update(0)
+        #     for i in pbar:
+        #         out, loss = self.train_step(epoch, i, image_pbar)
+        #         pbar.set_description(f'loss: {loss.item():04.2f}')
 
-                if terminate:
-                    print('detecting keyboard interrupt, gracefully exiting')
-                    return
+        #         if terminate:
+        #             print('detecting keyboard interrupt, gracefully exiting')
+        #             return

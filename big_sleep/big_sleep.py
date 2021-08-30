@@ -488,11 +488,12 @@ class Imagine(nn.Module):
 
                 if self.save_latents:
                     if self.latents_filename is None:
-                        self.latents_filepath = self.latents_dir.joinpath(f"{self.text_path}{self.seed_suffix}.backup")
+                        self.latents_filepath = self.latents_dir.joinpath(f"{self.text_path}{self.seed_suffix}.pkl")
                     else:
                         self.latents_filepath = self.latents_dir.joinpath(self.latents_filename)
 
                     dill.dump(self.model.mode.latents, file = open(self.latents_filepath, "wb"))
+                    
                     if self.save_latents == "initial":
                         self.save_latents = False
                         

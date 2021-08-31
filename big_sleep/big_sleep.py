@@ -493,7 +493,7 @@ class Imagine(nn.Module):
                         self.latents_filepath = self.latents_dir.joinpath(self.latents_filename)
 
                     dill.dump(self.model.mode.latents, file = open(self.latents_filepath, "wb"))
-                    
+
                     if self.save_latents == "initial":
                         self.save_latents = False
                         
@@ -526,14 +526,14 @@ class Imagine(nn.Module):
             open_folder(self.save_dir)
             self.open_folder = False
 
-        # image_pbar = tqdm(total=self.total_image_updates, desc='image update', position=2, leave=True)
-        # for epoch in trange(self.epochs, desc = '      epochs', position=0, leave=True):
-        #     pbar = trange(self.iterations, desc='   iteration', position=1, leave=True)
-        #     image_pbar.update(0)
-        #     for i in pbar:
-        #         out, loss = self.train_step(epoch, i, image_pbar)
-        #         pbar.set_description(f'loss: {loss.item():04.2f}')
+        image_pbar = tqdm(total=self.total_image_updates, desc='image update', position=2, leave=True)
+        for epoch in trange(self.epochs, desc = '      epochs', position=0, leave=True):
+            pbar = trange(self.iterations, desc='   iteration', position=1, leave=True)
+            image_pbar.update(0)
+            for i in pbar:
+                out, loss = self.train_step(epoch, i, image_pbar)
+                pbar.set_description(f'loss: {loss.item():04.2f}')
 
-        #         if terminate:
-        #             print('detecting keyboard interrupt, gracefully exiting')
-        #             return
+                if terminate:
+                    print('detecting keyboard interrupt, gracefully exiting')
+                    return
